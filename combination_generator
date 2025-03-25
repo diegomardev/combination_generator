@@ -1,0 +1,78 @@
+// Carácteres a usar
+const CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789';
+
+/**
+ * Convierte un número en una “palabra” aplicando base = chars.length.
+ * Ejemplo: si num=0, result='aaaaa' (para length=5),
+ * si num=1, result='aaaab', etc.
+ */
+function numberToCombo(num, chars, length) {
+  const base = chars.length;
+  let combo = '';
+  for (let i = 0; i < length; i++) {
+    combo = chars[num % base] + combo;
+    num = Math.floor(num / base);
+  }
+  return combo;
+}
+
+/**
+ * Genera todas las combinaciones de 'length' usando 'chars',
+ * pero las procesa en bloques de tamaño 'batchSize' para
+ * evitar que se bloquee el navegador.
+ *
+ * @param {string} chars        - Conjunto de caracteres
+ * @param {number} length       - Longitud de las combinaciones
+ * @param {function} onChunk    - Callback que recibe: (lote[], totalProcesado, totalGeneral)
+ * @param {number} batchSize    - Tamaño de cada bloque
+ */
+function generarCombinacionesAsincrono(chars, length, onChunk, batchSize = 100000) {
+  const totalComb = Math.pow(chars.length, length);
+  let current = 0;
+
+  function procesarSiguienteBloque() {
+    const results = [];
+    const end = Math.min(current + batchSize, totalComb);
+
+    // Generamos un lote de combinaciones desde 'current' hasta 'end'
+    for (; current < end; current++) {
+      results.push(numberToCombo(current, chars, length));
+    }
+
+    // Llamamos al callback para procesar/usar las combinaciones del lote
+    onChunk(results, current, totalComb);
+
+    // Si todavía faltan combinaciones, programamos el siguiente bloque
+    if (current < totalComb) {
+      setTimeout(procesarSiguienteBloque, 0);
+    }
+  }
+
+  procesarSiguienteBloque();
+}
+
+// Variable global para ir guardando TODAS las combinaciones
+// (¡ten cuidado con esto si es un número masivo!)
+const todasLasCombinaciones = [];
+
+// Ejemplo de uso:
+generarCombinacionesAsincrono(
+  CHARS,
+  5,                // 36^5 = 60,466,176 combinaciones (¡ojo con la memoria!)
+  (lote, procesadas, total) => {
+    // Guardamos el lote en nuestra variable global
+    todasLasCombinaciones.push(...lote);
+    
+    console.log(`Recibido un lote de ${lote.length} combinaciones.`);
+    console.log(`Total acumulado en memoria: ${todasLasCombinaciones.length}`);
+    console.log(`Total procesadas: ${procesadas} / ${total}`);
+
+    // Para “ver” el lote actual:
+    console.log('Lote actual:', lote);
+
+    // Si te interesa ver toda la lista global (cuidado si ya es enorme),
+    // podrías mostrarla (pero puede colgar la consola):
+    // console.log('Todas las combinaciones hasta ahora:', todasLasCombinaciones);
+  },
+  100000 // Tamaño de cada bloque
+);
